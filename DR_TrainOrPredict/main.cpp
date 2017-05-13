@@ -37,32 +37,22 @@ void Predict(const char *svmDataXmlPath){
         Mat origin=imread(string(buffers));
         
         /************************************/
-        imshow("origin", origin);
-        Mat gray,removeNoise;
+//        imshow("origin", origin);
+        Mat gray,resultMat;
 
 //去雜訊
         cvtColor(origin,gray,CV_RGB2GRAY);
         threshold( gray, gray, 110, 255, CV_THRESH_BINARY_INV );
-        IplImage *removeNoiseImage = new IplImage(gray);
-        
-        IplImage *bigImage;
         
         CvSize dst_cvsize; int scale = 3;
-        dst_cvsize.width = removeNoiseImage->width * scale;//目標影像的寬為源影像寬的scale倍
-        dst_cvsize.height = removeNoiseImage->height * scale;
-        bigImage = cvCreateImage( dst_cvsize, removeNoiseImage->depth, removeNoiseImage->nChannels); //創立目標影像
-        cvResize(removeNoiseImage, bigImage, CV_INTER_LINEAR);
+        dst_cvsize.width = gray.cols * scale;//目標影像的寬為源影像寬的scale倍
+        dst_cvsize.height = gray.rows * scale;
         
-        IplImage * ED = cvCloneImage(bigImage);
-        
-        cvErode(ED,ED,0,1);
-        
-        Mat resultMat = Mat(ED,0);
-        
+        resize(gray, resultMat, dst_cvsize);
+        erode(resultMat, resultMat, Mat());
         GaussianBlur(resultMat, resultMat, Size(3,3), 0);
-        cvDilate(ED,ED,0,1);
-//
-        
+        dilate(resultMat, resultMat, Mat());
+ 
 //分群
         vector<vector<Point>> contours;
         vector<Vec4i> hierarchy;
@@ -82,7 +72,6 @@ void Predict(const char *svmDataXmlPath){
         }
         
         sort(boundRect.begin(), boundRect.end(), ^(Rect i,Rect j){ return i.x<j.x; });
-//
         
         CvSVM svm;
         
@@ -112,10 +101,10 @@ void Predict(const char *svmDataXmlPath){
                 }
             }
             
-            IplImage* Img = new IplImage(image);
+            IplImage Img = IplImage(image); // the same address
             IplImage* trainTempImg=cvCreateImage(cvSize(28,28),8,1);
             cvZero(trainTempImg);
-            cvResize(Img,trainTempImg);
+            cvResize(&Img,trainTempImg);
             
 //test show:
 //            sprintf (buffers,"imageIndex-%d",imageIndex);
@@ -142,6 +131,13 @@ void Predict(const char *svmDataXmlPath){
             /************************************/
             
             numCounts[ret] += 1;
+            
+            image.release();
+            roi.release();
+            cvReleaseImage(&trainTempImg);
+            cvReleaseMat( &SVMtrainMat );
+            delete hog;
+            
 #ifdef saveFile
             sprintf (buffers,saveFilePath,ret,fileIndex,imageIndex);
             cvSaveImage(buffers, trainTempImg );
@@ -150,6 +146,13 @@ void Predict(const char *svmDataXmlPath){
         printf("\t\t%s",resultStr.c_str());
         printf("\n-----------------------------\n");
         resultStr.clear();
+        
+        origin.release();
+        gray.release();
+        findContoursMat.release();
+        addRectangleMat.release();
+        resultMat.release();
+        
         if (imageNumber==1) {
             waitKey();
         }
