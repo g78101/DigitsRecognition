@@ -1,7 +1,9 @@
 #ifndef DR_LIB
 #define DR_LIB
 
+class CvSVM;
+
 // remember free return char*
-char * recognitionImage(const char *svmDataXmlPath ,const char * imagePath);
+char * recognitionImage(CvSVM *svm ,void *mat);
 
 #endif
